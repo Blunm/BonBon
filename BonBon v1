@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BonBon — Browser Code Editor</title>
+<style>
+:root{
+  --bg:#0b0d12;--panel:#11141b;--panel2:#171b24;--border:#252b38;
+  --text:#e8ecf4;--muted:#8992a3;--accent:#8b7cff;--accent2:#b49cff;
+  --editor:#0d1016;--line:#171c26;--sel:#2b3150;--danger:#ff6b81;
+}
+*{box-sizing:border-box}html,body{height:100%;margin:0}
+body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;background:var(--bg);color:var(--text);overflow:hidden}
+button,input{font:inherit}
+button{border:0;color:inherit;background:none;cursor:pointer}
+.app{height:100vh;display:grid;grid-template-rows:54px 1fr 28px}
+.topbar{display:flex;align-items:center;gap:16px;padding:0 15px;background:var(--panel);border-bottom:1px solid var(--border);position:relative;z-index:20}
+.brand{font-weight:800;letter-spacing:-.4px;display:flex;align-items:center;gap:9px;min-width:170px}
+.logo{width:29px;height:29px;border-radius:8px;background:linear-gradient(135deg,#8b7cff,#c47cff);display:grid;place-items:center;color:white;font-size:15px;box-shadow:0 5px 20px #8b7cff35}
+.title{color:var(--muted);font-size:13px}
+.actions{margin-left:auto;display:flex;gap:6px}
+.iconbtn,.run{height:34px;padding:0 10px;border:1px solid var(--border);border-radius:8px;background:var(--panel2)}
+.iconbtn:hover,.run:hover{background:#202634}
+.run{background:var(--accent);border-color:transparent;color:white;font-weight:700}
+.workspace{min-height:0;height:100%;display:grid;grid-template-columns:220px minmax(0,1fr) 42%;overflow:hidden}
+.sidebar{background:var(--panel);border-right:1px solid var(--border);padding:14px 9px;overflow:auto}
+.section-title{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);padding:5px 9px 9px}
+.file{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:7px;font-size:13px;color:#cbd1dd}
+.file:hover{background:var(--panel2)}.file.active{background:#262a3a;color:white}
+.file-dot{width:7px;height:7px;border-radius:50%;background:#7ec8ff}
+.file-dot.js{background:#f1d76b}.file-dot.css{background:#7aa8ff}
+.editor-area{min-width:0;min-height:0;display:grid;grid-template-rows:43px minmax(0,1fr);background:var(--editor);overflow:hidden}
+.tabs{display:flex;align-items:end;background:var(--panel);border-bottom:1px solid var(--border);overflow:auto}
+.tab{height:43px;display:flex;align-items:center;gap:9px;padding:0 14px;border-right:1px solid var(--border);font-size:13px;color:var(--muted);white-space:nowrap}
+.tab.active{background:var(--editor);color:var(--text);border-top:2px solid var(--accent)}
+.tab .x{color:#6f7787}.tab .x:hover{color:white}
+.editor-wrap{position:relative;min-height:0;height:100%;display:grid;grid-template-columns:54px minmax(0,1fr);overflow:hidden}
+.lines{padding:13px 10px 0 0;text-align:right;color:#4f5869;font:13px/21px ui-monospace,SFMono-Regular,Consolas,monospace;user-select:none;overflow:hidden}
+.code-wrap{position:relative;min-width:0;min-height:0;overflow:hidden}.code-wrap #code,.code-wrap #highlight{width:100%;min-width:100%;height:100%;min-height:100%;box-sizing:border-box}
+#code,#highlight{position:absolute;inset:0;margin:0;padding:13px 18px;font:13px/21px ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre;tab-size:2;overflow:auto;overflow-wrap:normal;word-break:normal;min-width:max-content}
+#highlight{pointer-events:none;color:#d7deea;overflow:hidden}
+#code{z-index:2;background:transparent;color:transparent;caret-color:white;resize:none;border:0;outline:0;overflow:auto;overscroll-behavior:contain}
+#code::selection{background:#454b70}
+.keyword{color:#c792ea}.string{color:#c3e88d}.comment{color:#657184}.number{color:#f78c6c}.tag{color:#f07178}.attr{color:#ffcb6b}.fn{color:#82aaff}
+.preview{min-width:0;display:grid;grid-template-rows:43px 1fr;background:#fff}
+.previewbar{display:flex;align-items:center;gap:8px;padding:0 12px;background:var(--panel);border-left:1px solid var(--border);border-bottom:1px solid var(--border);color:var(--muted);font-size:12px}
+.previewbar b{color:var(--text)}iframe{width:100%;height:100%;border:0;background:white}
+.status{display:flex;align-items:center;gap:18px;padding:0 12px;background:var(--panel);border-top:1px solid var(--border);font-size:11px;color:var(--muted)}
+.dot{width:6px;height:6px;border-radius:50%;background:#63d59a;display:inline-block}
+.search{position:absolute;z-index:5;right:18px;top:53px;background:var(--panel2);border:1px solid var(--border);padding:7px;border-radius:8px;box-shadow:0 12px 30px #0008;display:none}
+.search.show{display:flex;gap:6px}.search input{background:#0d1016;border:1px solid var(--border);border-radius:6px;color:white;padding:7px 9px;outline:0}
+#topBtn{position:fixed;right:22px;bottom:48px;z-index:100;display:none;padding:8px 11px;border:1px solid var(--border);border-radius:8px;background:var(--panel2);box-shadow:0 8px 24px #0005;font-size:12px}#topBtn.show{display:block}.light{--bg:#eef1f6;--panel:#f7f8fb;--panel2:#eceff5;--border:#d7dce6;--text:#202633;--muted:#6d7687;--editor:#fff;--sel:#cdd5ee}
+@media(max-width:900px){.workspace{grid-template-columns:170px 1fr}.preview{display:none}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand"><div class="logo">&lt;/&gt;</div>BonBon</div>
+    <div class="title" id="docTitle">index.html</div>
+    <div class="actions">
+      <button class="iconbtn" id="newBtn">＋ New</button>
+      <button class="iconbtn" id="saveBtn">⇩ Save</button>
+      <button class="iconbtn" id="searchBtn">⌕ Search</button>
+      <button class="iconbtn" id="themeBtn">☼ Theme</button>
+      <button class="run" id="runBtn">▶ Run</button><button class="iconbtn" id="newTabBtn">↗ Preview Tab</button>
+    </div>
+  </header>
+
+  <main class="workspace">
+    <aside class="sidebar">
+      <div class="section-title">Explorer</div>
+      <div class="file active" data-file="index.html"><span class="file-dot"></span>index.html</div>
+      <div class="file" data-file="script.js"><span class="file-dot js"></span>script.js</div>
+      <div class="file" data-file="style.css"><span class="file-dot css"></span>style.css</div>
+      <div class="file" data-file="README.md"><span class="file-dot"></span>README.md</div>
+      <div class="section-title" style="margin-top:22px">Workspace</div>
+      <div style="padding:8px 10px;color:var(--muted);font-size:12px;line-height:1.6">
+        A lightweight browser editor.<br>Everything stays on your device.
+      </div>
+    </aside>
+
+    <section class="editor-area">
+      <div class="tabs" id="tabs"></div>
+      <div class="editor-wrap">
+        <div class="lines" id="lines"></div>
+        <div class="code-wrap">
+          <pre id="highlight"></pre>
+          <textarea id="code" spellcheck="false"></textarea>
+          <div class="search" id="searchBox">
+            <input id="searchInput" placeholder="Find in file…">
+            <button class="iconbtn" id="closeSearch">×</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="preview">
+      <div class="previewbar"><b>Preview</b><span>Live browser output</span></div>
+      <iframe id="preview" sandbox="allow-scripts"></iframe>
+    </section>
+  </main>
+  <button id="topBtn" title="Back to top">↑ Top / Menu</button>
+
+  <footer class="status">
+    <span><i class="dot"></i> Ready</span>
+    <span id="position">Ln 1, Col 1</span>
+    <span id="language">HTML</span>
+    <span style="margin-left:auto">UTF-8</span>
+    <span>Spaces: 2</span>
+  </footer>
+</div>
+
+<script>
+const files={
+"index.html":`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Project</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="card">
+    <span class="badge">BONBON</span>
+    <h1>Hello, world.</h1>
+    <p>Edit this file and press <strong>Run</strong> to see your changes.</p>
+    <button onclick="sayHello()">Click me</button>
+  </main>
+  <script src="script.js"><\/script>
+</body>
+</html>`,
+"script.js":`function sayHello() {
+  alert("Hello from BonBon!");
+}`,
+"style.css":`body {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  font-family: system-ui, sans-serif;
+  background: #111827;
+  color: white;
+}
+
+.card {
+  max-width: 520px;
+  padding: 48px;
+  border-radius: 24px;
+  background: #1f2937;
+  text-align: center;
+  box-shadow: 0 25px 80px #0008;
+}
+
+.badge {
+  color: #a78bfa;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 2px;
+}
+
+button {
+  border: 0;
+  padding: 12px 20px;
+  border-radius: 10px;
+  background: #8b7cff;
+  color: white;
+  cursor: pointer;
+}`,
+"README.md":`# BonBon
+
+A tiny BonBon code editor that runs directly in your browser.
+
+## Features
+
+- HTML, CSS and JavaScript files
+- Live preview
+- Local autosave
+- Search
+- Dark and light themes`
+};
+
+let current="index.html";
+const code=document.getElementById("code"), highlight=document.getElementById("highlight");
+const lines=document.getElementById("lines"), tabs=document.getElementById("tabs");
+
+function escapeHtml(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+function syntax(s){
+  let x=escapeHtml(s);
+  x=x.replace(/(\/\/.*|<!--[\s\S]*?-->|# .*)/g,'<span class="comment">$1</span>');
+  x=x.replace(/(&quot;.*?&quot;|&#39;.*?&#39;|".*?"|'.*?')/g,'<span class="string">$1</span>');
+  x=x.replace(/\b(const|let|var|function|return|if|else|for|while|new|class|import|from|export|async|await|true|false|null|undefined)\b/g,'<span class="keyword">$1</span>');
+  x=x.replace(/\b(\d+(?:\.\d+)?)\b/g,'<span class="number">$1</span>');
+  x=x.replace(/(&lt;\/?)([a-zA-Z][\w-]*)/g,'$1<span class="tag">$2</span>');
+  x=x.replace(/\b([a-zA-Z-]+)(?==)/g,'<span class="attr">$1</span>');
+  return x;
+}
+function render(){
+  code.value=files[current];
+  highlight.innerHTML=syntax(code.value)+"\n";
+  const n=Math.max(1,code.value.split("\n").length);
+  lines.innerHTML=Array.from({length:n},(_,i)=>i+1).join("<br>");
+  document.getElementById("docTitle").textContent=current;
+  const ext=current.split(".").pop();
+  document.getElementById("language").textContent=ext==="js"?"JavaScript":ext==="css"?"CSS":ext==="md"?"Markdown":"HTML";
+  tabs.innerHTML="";
+  Object.keys(files).forEach(f=>{
+    const t=document.createElement("button"); t.className="tab"+(f===current?" active":"");
+    t.innerHTML=`<span class="file-dot ${f.split(".").pop()}"></span>${f}<span class="x">×</span>`;
+    t.onclick=()=>{files[current]=code.value;current=f;render();};
+    tabs.appendChild(t);
+  });
+}
+function sync(){
+  files[current]=code.value;
+  highlight.innerHTML=syntax(code.value)+"\n";
+  lines.innerHTML=Array.from({length:Math.max(1,code.value.split("\n").length)},(_,i)=>i+1).join("<br>");
+  updatePos();
+  localStorage.setItem("nova-files",JSON.stringify(files));
+}
+function updatePos(){
+  const p=code.selectionStart, before=code.value.slice(0,p), row=before.split("\n").length;
+  const col=p-(before.lastIndexOf("\n")+1)+1;
+  document.getElementById("position").textContent=`Ln ${row}, Col ${col}`;
+}
+code.addEventListener("input",sync);
+code.addEventListener("click",updatePos);
+code.addEventListener("keyup",updatePos);
+code.addEventListener("scroll",()=>{
+  highlight.scrollTop=code.scrollTop;
+  highlight.scrollLeft=code.scrollLeft;
+  lines.scrollTop=code.scrollTop;
+});
+code.addEventListener("wheel",e=>{
+  if(e.shiftKey && e.deltaY){
+    code.scrollLeft += e.deltaY;
+    e.preventDefault();
+  }
+},{passive:false});
+document.addEventListener("keydown",e=>{
+  if((e.ctrlKey||e.metaKey)&&e.key==="s"){e.preventDefault();downloadFile();}
+  if((e.ctrlKey||e.metaKey)&&e.key==="f"){e.preventDefault();openSearch();}
+  if(e.key==="Tab"){e.preventDefault();const a=code.selectionStart,b=code.selectionEnd;code.setRangeText("  ",a,b,"end");sync();}
+});
+function buildProject(){
+  const html = files["index.html"];
+  const css = files["style.css"];
+  const js = files["script.js"].replace(/<\/script>/gi, "<\\/script>");
+  return html
+    .replace("</head>", "<style>" + css + "</style></head>")
+    .replace("</body>", "<script>" + js + "<\/script></body>");
+}
+function run(){
+  document.getElementById("preview").srcdoc = buildProject();
+}
+function previewNewTab(){
+  const win = window.open("", "_blank");
+  if (!win) {
+    alert("Your browser blocked the new tab. Please allow pop-ups for this file.");
+    return;
+  }
+  win.document.open();
+  win.document.write(buildProject());
+  win.document.close();
+}
+function downloadFile(){
+  const blob=new Blob([files[current]],{type:"text/plain"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=current;a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),500);
+}
+function openSearch(){document.getElementById("searchBox").classList.add("show");document.getElementById("searchInput").focus();}
+document.getElementById("runBtn").onclick=run;
+document.getElementById("newTabBtn").onclick=previewNewTab;
+document.getElementById("saveBtn").onclick=downloadFile;
+document.getElementById("searchBtn").onclick=openSearch;
+document.getElementById("closeSearch").onclick=()=>document.getElementById("searchBox").classList.remove("show");
+document.getElementById("searchInput").addEventListener("input",e=>{
+  const q=e.target.value;if(!q)return;
+  const i=code.value.toLowerCase().indexOf(q.toLowerCase());
+  if(i>=0){code.focus();code.setSelectionRange(i,i+q.length);}
+});
+document.getElementById("themeBtn").onclick=()=>document.body.classList.toggle("light");
+document.getElementById("newBtn").onclick=()=>{
+  const name=prompt("File name:","untitled.html");if(!name)return;
+  if(files[name]===undefined)files[name]="";current=name;render();sync();
+};
+document.querySelectorAll(".file").forEach(el=>el.onclick=()=>{files[current]=code.value;current=el.dataset.file;render();});
+const topBtn=document.getElementById("topBtn");
+code.addEventListener("scroll",()=>{
+  topBtn.classList.toggle("show",code.scrollTop>180);
+});
+topBtn.onclick=()=>{code.scrollTop=0;highlight.scrollTop=0;lines.scrollTop=0;code.focus();};
+try{const saved=JSON.parse(localStorage.getItem("nova-files"));if(saved)Object.assign(files,saved);}catch{}
+render();run();
+</script>
+</body>
+</html>
